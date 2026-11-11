@@ -1,0 +1,37 @@
+# ─── Secrets & environment ─────────────────────────────
+.env
+.env.*
+!.env.example
+
+# ─── Python ────────────────────────────────────────────
+__pycache__/
+*.py[cod]
+.venv/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+*.egg-info/
+
+# ─── Node / Next.js ────────────────────────────────────
+node_modules/
+.next/
+out/
+dist/
+next-env.d.ts
+*.tsbuildinfo
+npm-debug.log*
+
+# ─── Local infrastructure data ─────────────────────────
+infra/data/
+
+# ─── OS & editors ──────────────────────────────────────
+.DS_Store
+.idea/
+.vscode/*
+!.vscode/extensions.json
+*.swp
+
+# ─── Local tool settings ───────────────────────────────
+.claude/settings.local.json
