@@ -51,3 +51,8 @@ authentication and to the Supabase OAuth integration (ADR-0005).
 * One database lookup per authenticated request (acceptable; can cache later).
 * We own security work: login rate limiting, password reset and email
   verification are our responsibility (planned after milestone 1).
+
+## Update (2026-11-12)
+
+Switched to stateless JWT (HS256) in an httpOnly SameSite=Lax cookie, 7-day expiry.
+Trade-off accepted: logout/ban is not instant; the token stays valid until expiry.

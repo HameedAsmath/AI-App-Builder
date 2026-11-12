@@ -11,7 +11,9 @@ class Settings(BaseSettings):
     app_name: str = "loveable-api"
     environment: Literal["local", "test", "production"] = "local"
     debug: bool = False
-    database_url: PostgresDsn  # required
+    database_url: PostgresDsn
+    jwt_secret: str
+    jwt_expire_days: int = 7
 
 
 @lru_cache
