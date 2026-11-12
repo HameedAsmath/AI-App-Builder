@@ -14,6 +14,8 @@ class Settings(BaseSettings):
     database_url: PostgresDsn
     jwt_secret: str
     jwt_expire_days: int = 7
+    anthropic_api_key: str
+    agent_model: str = "claude-opus-5-5"
 
 
 @lru_cache

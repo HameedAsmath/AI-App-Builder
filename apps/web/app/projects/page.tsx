@@ -1,6 +1,7 @@
 "use client";
 
 import { useRouter } from "next/navigation";
+import Link from "next/link";
 import { useEffect, useState } from "react";
 
 import { Button } from "@/components/ui/button";
@@ -71,7 +72,9 @@ export default function ProjectsPage() {
         {projects.map((p) => (
           <Card key={p.id}>
             <CardContent className="flex items-center justify-between py-4">
-              <span>{p.name}</span>
+              <Link href={`/projects/${p.id}`} className="hover:underline">
+                {p.name}
+              </Link>
               <Button
                 variant="ghost"
                 size="sm"
