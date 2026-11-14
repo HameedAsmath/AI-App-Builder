@@ -12,6 +12,6 @@ class Message(Base):
 
     id: Mapped[uuid.UUID] = mapped_column(primary_key=True, default=uuid.uuid4)
     project_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("projects.id", ondelete="CASCADE"), index=True)
-    role: Mapped[str]  # "user" or "assistant"
+    role: Mapped[str]
     content: Mapped[str]
     created_at: Mapped[datetime] = mapped_column(server_default=func.now())

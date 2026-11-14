@@ -13,7 +13,7 @@ from app.lib.agent import get_agent
 from app.lib.auth import get_current_user
 from app.lib.db import SessionLocal, get_session
 from app.models import Message, User
-from app.routes.projects import get_own_project
+from app.routes.project import get_own_project
 
 router = APIRouter(prefix="/projects/{project_id}", tags=["chat"])
 logger = logging.getLogger(__name__)
