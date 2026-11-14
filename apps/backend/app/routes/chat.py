@@ -6,13 +6,14 @@ from fastapi import APIRouter, Depends
 from fastapi.responses import StreamingResponse
 from langchain_core.messages import AIMessageChunk
 from pydantic import BaseModel, Field
-from sqlalchemy import select
+from sqlalchemy import select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.lib.agent import get_agent
+from app.lib.agent import build_agent
 from app.lib.auth import get_current_user
 from app.lib.db import SessionLocal, get_session
-from app.models import Message, User
+from app.lib.sandbox import get_sandbox, preview_url
+from app.models import Message, Project, User
 from app.routes.project import get_own_project
 
 router = APIRouter(prefix="/projects/{project_id}", tags=["chat"])
@@ -47,31 +48,27 @@ async def chat(
     user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_session),
 ) -> StreamingResponse:
-    await get_own_project(project_id, user, db)
+    project = await get_own_project(project_id, user, db)
 
-    # Past messages = the agent's memory of this conversation
     rows = await db.scalars(
         select(Message).where(Message.project_id == project_id).order_by(Message.created_at)
     )
     history = [{"role": m.role, "content": m.content} for m in rows]
 
-    # Save the user's message before the agent starts
     db.add(Message(project_id=project_id, role="user", content=body.message))
     await db.commit()
     history.append({"role": "user", "content": body.message})
 
-    return StreamingResponse(stream_reply(project_id, history), media_type="text/event-stream")
+    return StreamingResponse(
+        stream_reply(project.id, project.sandbox_id, history), media_type="text/event-stream"
+    )
 
-
-# --- Streaming helpers ---
 
 def sse(data: dict) -> str:
-    """One Server-Sent Event: 'data: {...}' followed by a blank line."""
     return f"data: {json.dumps(data)}\n\n"
 
 
 def text_of(chunk: AIMessageChunk) -> str:
-    """Claude sends either a plain string or a list of blocks; keep only the text."""
     if isinstance(chunk.content, str):
         return chunk.content
     return "".join(
@@ -79,22 +76,44 @@ def text_of(chunk: AIMessageChunk) -> str:
     )
 
 
-async def stream_reply(project_id: uuid.UUID, history: list[dict]):
+async def stream_reply(project_id: uuid.UUID, sandbox_id: str | None, history: list[dict]):
     reply = ""
     try:
-        async for chunk, _meta in get_agent().astream({"messages": history}, stream_mode="messages"):
-            if isinstance(chunk, AIMessageChunk):
-                text = text_of(chunk)
-                if text:
-                    reply += text
-                    yield sse({"type": "token", "text": text})
+        # 1. Get the project's sandbox (new ones take ~1–2 minutes to set up)
+        yield sse({"type": "status", "text": "Starting sandbox…"})
+        sandbox = await get_sandbox(sandbox_id)
+        url = preview_url(sandbox)
+
+        if sandbox.sandbox_id != sandbox_id:  # new sandbox → remember it
+            async with SessionLocal() as db:
+                await db.execute(
+                    update(Project)
+                    .where(Project.id == project_id)
+                    .values(sandbox_id=sandbox.sandbox_id, preview_url=url)
+                )
+                await db.commit()
+
+        yield sse({"type": "preview", "url": url})
+        yield sse({"type": "status", "text": "Thinking…"})
+
+        # 2. Run the agent and stream its text and tool activity
+        async for chunk, _meta in build_agent(sandbox).astream({"messages": history}, stream_mode="messages"):
+            if not isinstance(chunk, AIMessageChunk):
+                continue
+            for call in chunk.tool_call_chunks:
+                if call.get("name"):
+                    yield sse({"type": "status", "text": f"Running {call['name']}…"})
+            text = text_of(chunk)
+            if text:
+                reply += text
+                yield sse({"type": "token", "text": text})
     except Exception:
         logger.exception("Agent failed")
         yield sse({"type": "error", "message": "Agent failed"})
 
-    # The request's DB session may already be closed while streaming, so open a fresh one
     async with SessionLocal() as db:
         db.add(Message(project_id=project_id, role="assistant", content=reply or "(no reply)"))
         await db.commit()
 
+    yield sse({"type": "status", "text": ""})
     yield sse({"type": "done"})

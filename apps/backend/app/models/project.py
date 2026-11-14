@@ -13,4 +13,6 @@ class Project(Base):
     id: Mapped[uuid.UUID] = mapped_column(primary_key=True, default=uuid.uuid4)
     user_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"), index=True)
     name: Mapped[str]
+    sandbox_id: Mapped[str | None]
+    preview_url: Mapped[str | None]
     created_at: Mapped[datetime] = mapped_column(server_default=func.now())

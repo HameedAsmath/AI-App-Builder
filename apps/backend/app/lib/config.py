@@ -16,6 +16,7 @@ class Settings(BaseSettings):
     jwt_expire_days: int = 7
     anthropic_api_key: str
     agent_model: str = "claude-opus-5-5"
+    e2b_api_key: str
 
 
 @lru_cache

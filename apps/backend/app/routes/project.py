@@ -20,11 +20,12 @@ class ProjectCreate(BaseModel):
 class ProjectOut(BaseModel):
     id: uuid.UUID
     name: str
+    preview_url: str | None
     created_at: datetime
 
 
 def to_out(p: Project) -> ProjectOut:
-    return ProjectOut(id=p.id, name=p.name, created_at=p.created_at)
+    return ProjectOut(id=p.id, name=p.name, preview_url=p.preview_url, created_at=p.created_at)
 
 
 # Load a project only if it belongs to this user; otherwise 404
